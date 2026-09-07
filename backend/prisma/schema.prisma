@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  SELLER
+}
+
+enum MovementType {
+  IN
+  OUT
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(SELLER)
+  createdAt    DateTime  @default(now())
+  movements    InventoryMovement[]
+  invoices     Invoice[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  sku         String    @unique
+  description String?
+  price       Decimal   @db.Decimal(10, 2)
+  cost        Decimal   @db.Decimal(10, 2)
+  stock       Int       @default(0)
+  minStock    Int       @default(5)
+  categoryId  Int?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime  @default(now())
+  movements   InventoryMovement[]
+  invoiceItems InvoiceItem[]
+}
+
+model InventoryMovement {
+  id        Int          @id @default(autoincrement())
+  productId Int
+  product   Product      @relation(fields: [productId], references: [id])
+  type      MovementType
+  quantity  Int
+  reason    String?
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id])
+  createdAt DateTime     @default(now())
+}
+
+model Customer {
+  id       Int       @id @default(autoincrement())
+  name     String
+  email    String?
+  phone    String?
+  taxId    String?
+  address  String?
+  invoices Invoice[]
+}
+
+model Invoice {
+  id         Int           @id @default(autoincrement())
+  number     String        @unique
+  customerId Int
+  customer   Customer      @relation(fields: [customerId], references: [id])
+  userId     Int
+  user       User          @relation(fields: [userId], references: [id])
+  status     InvoiceStatus @default(PENDING)
+  subtotal   Decimal       @db.Decimal(10, 2)
+  tax        Decimal       @db.Decimal(10, 2)
+  total      Decimal       @db.Decimal(10, 2)
+  items      InvoiceItem[]
+  createdAt  DateTime      @default(now())
+}
+
+model InvoiceItem {
+  id         Int      @id @default(autoincrement())
+  invoiceId  Int
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id])
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  subtotal   Decimal  @db.Decimal(10, 2)
+}
