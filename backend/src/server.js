@@ -10,7 +10,7 @@ const invoiceRoutes = require('./routes/invoice.routes');
 const categoryRoutes = require('./routes/category.routes'); 
 const userRoutes = require('./routes/user.routes');
 const app = express();
-app.use(cors());
+app.use(cors({ origin: [ 'https://inventario-facturacion-weld.vercel.app', 'http://localhost:3000', ], })); 
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
