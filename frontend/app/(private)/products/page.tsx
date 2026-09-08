@@ -413,7 +413,7 @@ async function loadProducts()
                       </TableCell>
 
                       <TableCell>
-                        ${Number(p.price).toFixed(2)}
+                        Q{Number(p.price).toFixed(2)}
                       </TableCell>
 
                       <TableCell
