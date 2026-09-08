@@ -270,7 +270,7 @@ export default function DashboardPage() {
 
                   <YAxis fontSize={12}  tick={{ fill: 'hsl(var(--foreground))' }}/>
 
-                   <Tooltip formatter={(value: any) => `$${Number(value).toFixed(2)}`} contentStyle={{ backgroundColor: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }} cursor={{ fill: 'var(--accent)', opacity: 0.3 }} />
+                   <Tooltip formatter={(value: any) => `Q${Number(value).toFixed(2)}`} contentStyle={{ backgroundColor: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }} cursor={{ fill: 'var(--accent)', opacity: 0.3 }} />
                 <Bar dataKey="total" fill="var(--primary)" radius={[4, 4, 0, 0]} /> 
                 </BarChart>
               </ResponsiveContainer>

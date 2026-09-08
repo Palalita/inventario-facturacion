@@ -510,7 +510,7 @@ async function loadData()
                                         </TableCell>
 
                                         <TableCell>
-                                            $
+                                            Q
                                             {Number(
                                                 inv.total,
                                             ).toFixed(2)}
