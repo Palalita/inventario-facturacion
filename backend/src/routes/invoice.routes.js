@@ -464,7 +464,7 @@ router.get('/:id/pdf', async (req, res) => {
   );
 
   doc.text(
-    `$${Number(invoice.total).toFixed(2)}`,
+    `Q${Number(invoice.total).toFixed(2)}`,
     totalsX,
     totalsY + 8,
     {
