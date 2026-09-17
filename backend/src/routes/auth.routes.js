@@ -13,20 +13,12 @@ const loginLimiter = rateLimit({
   }
   , standardHeaders: true, legacyHeaders: false,
 });
-router.post('/register', async (req, res) => {
-  const { name, email, password, role } = req.body;
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return res.status(400).json({ error: 'Email ya registrado' });
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { name, email, passwordHash, role: role || 'SELLER' }
-  });
-  res.status(201).json({ id: user.id, email: user.email });
-});
-
 router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
 
@@ -67,9 +59,9 @@ router.patch('/change-password', authMiddleware, async (req, res) => {
     });
   }
 
-  if (newPassword.length < 6) {
+  if (newPassword.length < 8) {
     return res.status(400).json({
-      error: 'La nueva contraseña debe tener al menos 6 caracteres',
+      error: 'La nueva contraseña debe tener al menos 8 caracteres',
     });
   }
 

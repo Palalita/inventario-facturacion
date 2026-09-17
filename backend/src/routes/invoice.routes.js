@@ -4,15 +4,24 @@ const { authMiddleware } = require('../middlewares/auth');
 const PDFDocument = require('pdfkit');
 const router = express.Router();
 const { sendLowStockAlert } = require('../utils/mailer');
+const { validate, invoiceSchema, invoiceStatusSchema } = require('../utils/validators');
+const { paginate } = require('../utils/pagination');
 const TAX_RATE = 0.12; // ajusta según tu país (IVA/ISV/etc.)
 
 router.use(authMiddleware);
 
 router.get('/', async (req, res) => {
-  const invoices = await prisma.invoice.findMany({
-    include: { customer: true, items: { include: { product: true } } },
-    orderBy: { createdAt: 'desc' }
-  });
+  const { skip, take } = paginate(req.query);
+  const [invoices, total] = await Promise.all([
+    prisma.invoice.findMany({
+      include: { customer: true, items: { include: { product: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    }),
+    prisma.invoice.count(),
+  ]);
+  res.set('X-Total-Count', String(total));
   res.json(invoices);
 });
 
@@ -25,8 +34,9 @@ router.get('/:id', async (req, res) => {
   res.json(invoice);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', validate(invoiceSchema), async (req, res) => {
   const { customerId, items } = req.body; // items: [{ productId, quantity }]
+  const lowStockAlerts = [];
 
   try {
     const invoice = await prisma.$transaction(async (tx) => {
@@ -53,7 +63,8 @@ router.post('/', async (req, res) => {
           data: { stock: product.stock - item.quantity }
         });
 
-        const newStock = product.stock - item.quantity; if (newStock <= product.minStock) { sendLowStockAlert({ ...product, stock: newStock }); }
+        const newStock = product.stock - item.quantity;
+        if (newStock <= product.minStock) lowStockAlerts.push({ ...product, stock: newStock });
 
         await tx.inventoryMovement.create({
           data: {
@@ -80,14 +91,25 @@ router.post('/', async (req, res) => {
       });
     });
 
+    lowStockAlerts.forEach(sendLowStockAlert);
     res.status(201).json(invoice);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', validate(invoiceStatusSchema), async (req, res) => {
   const { status } = req.body; // PENDING | PAID | CANCELLED
+
+  // Anular una factura revierte una venta ya registrada, así que se
+  // reserva a admin. Marcarla como pagada/pendiente lo puede hacer
+  // el vendedor que la generó.
+  if (status === 'CANCELLED' && req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Solo un admin puede anular una factura' });
+  }
+
+  console.log(`[audit] usuario ${req.user.id} (${req.user.name}) cambió el estado de la factura ${req.params.id} a ${status}`);
+
   const invoice = await prisma.invoice.update({
     where: { id: Number(req.params.id) },
     data: { status }
