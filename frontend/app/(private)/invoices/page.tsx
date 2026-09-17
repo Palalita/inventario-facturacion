@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-store';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Search } from 'lucide-react';
@@ -37,6 +38,8 @@ import {
 const TAX_RATE = 0.12;
 
 export default function InvoicesPage() {
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'ADMIN';
     const [invoices, setInvoices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -222,8 +225,13 @@ export default function InvoicesPage() {
     }
 
     async function updateStatus(invoiceId: number, status: string) {
-        await api.patch(`/invoices/${invoiceId}/status`, { status });
-        loadData();
+        try {
+            await api.patch(`/invoices/${invoiceId}/status`, { status });
+            loadData();
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || 'Error al actualizar el estado');
+            loadData();
+        }
     }
 
     return (
@@ -449,7 +457,9 @@ export default function InvoicesPage() {
                                             >
                                                 <option value="PENDING">Pendiente</option>
                                                 <option value="PAID">Pagada</option>
-                                                <option value="CANCELLED">Anulada</option>
+                                                {(isAdmin || inv.status === 'CANCELLED') && (
+                                                    <option value="CANCELLED">Anulada</option>
+                                                )}
                                             </select>
                                         </TableCell>
                                         <TableCell>

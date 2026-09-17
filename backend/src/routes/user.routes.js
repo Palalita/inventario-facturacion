@@ -5,6 +5,8 @@ const {
   authMiddleware,
   requireAdmin,
 } = require('../middlewares/auth');
+const { validate, userSchema, roleSchema } = require('../utils/validators');
+const { paginate } = require('../utils/pagination');
 
 const router = express.Router();
 
@@ -12,36 +14,36 @@ router.use(authMiddleware);
 router.use(requireAdmin);
 
 router.get('/', async (req, res) => {
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
+  const { skip, take } = paginate(req.query);
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      skip,
+      take,
+    }),
+    prisma.user.count(),
+  ]);
 
+  res.set('X-Total-Count', String(total));
   res.json(users);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', validate(userSchema), async (req, res) => {
   const {
     name,
     email,
     password,
     role,
   } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({
-      error:
-        'Nombre, email y contraseña son obligatorios',
-    });
-  }
 
   const existing = await prisma.user.findUnique({
     where: {
@@ -78,8 +80,10 @@ router.post('/', async (req, res) => {
   res.status(201).json(user);
 });
 
-router.patch('/:id/role', async (req, res) => {
+router.patch('/:id/role', validate(roleSchema), async (req, res) => {
   const { role } = req.body;
+
+  console.log(`[audit] usuario ${req.user.id} (${req.user.name}) cambió el rol de usuario ${req.params.id} a ${role}`);
 
   const user = await prisma.user.update({
     where: {
@@ -112,6 +116,8 @@ router.delete('/:id', async (req, res) => {
         id: Number(req.params.id),
       },
     });
+
+    console.log(`[audit] usuario ${req.user.id} (${req.user.name}) eliminó al usuario ${req.params.id}`);
 
     res.status(204).send();
   } catch (err) {

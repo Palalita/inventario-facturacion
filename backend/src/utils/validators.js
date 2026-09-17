@@ -48,6 +48,40 @@ const customerSchema = z.object({
   address: z.string().optional(),
 });
 
+const userSchema = z.object({
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  role: z.enum(['ADMIN', 'SELLER']).optional(),
+});
+
+const roleSchema = z.object({
+  role: z.enum(['ADMIN', 'SELLER'], 'Rol inválido'),
+});
+
+const invoiceSchema = z.object({
+  customerId: z.number().int().positive('Cliente inválido'),
+  items: z
+    .array(
+      z.object({
+        productId: z.number().int().positive('Producto inválido'),
+        quantity: z.number().int().positive('La cantidad debe ser mayor a 0'),
+      }),
+    )
+    .min(1, 'La factura debe tener al menos un producto'),
+});
+
+const invoiceStatusSchema = z.object({
+  status: z.enum(['PENDING', 'PAID', 'CANCELLED'], 'Estado inválido'),
+});
+
+const movementSchema = z.object({
+  productId: z.number().int().positive('Producto inválido'),
+  type: z.enum(['IN', 'OUT'], 'Tipo de movimiento inválido'),
+  quantity: z.number().int().positive('La cantidad debe ser mayor a 0'),
+  reason: z.string().optional(),
+});
+
 function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
@@ -72,4 +106,9 @@ module.exports = {
   validate,
   productSchema,
   customerSchema,
+  userSchema,
+  roleSchema,
+  invoiceSchema,
+  invoiceStatusSchema,
+  movementSchema,
 };
